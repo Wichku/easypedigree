@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pedigree Builder V29 - Text Box Fixes</title>
+    <script src="https://unpkg.com/konva@9.2.0/konva.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; overflow: hidden; background-color: #f8f9fa; font-family: sans-serif; touch-action: none; }
+        
+        /* Main Header Toolbar */
+        #toolbar {
+            position: relative; width: 100%; box-sizing: border-box;
+            background: white; padding: 10px 15px; border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); z-index: 10;
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center; user-select: none;
+        }
+
+        /* Context Menu (Desktop Right Click) */
+        #context-menu {
+            display: none; position: fixed; background: white; padding: 10px; 
+            border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1000; flex-direction: column; gap: 8px; align-items: flex-start; user-select: none; min-width: 120px;
+        }
+
+        /* Text Toolbar */
+        #text-toolbar {
+            display: none; position: absolute; background: white; padding: 6px 12px; 
+            border-radius: 8px; border: 1px solid #ccc; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            z-index: 1001; gap: 8px; align-items: center; user-select: none;
+        }
+
+        /* Mobile/Desktop Editor (Double Click/Tap) */
+        #node-editor {
+            display: none; position: fixed; z-index: 1001; background: white; padding: 12px;
+            border-radius: 12px; border: 1px solid #ccc; box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+            flex-direction: column; gap: 10px; min-width: 220px;
+        }
+
+        /* Floating Text Area Editor */
+        #text-editor {
+            display: none; position: absolute; z-index: 1002;
+            padding: 10px; margin: 0; border: none;
+            background: transparent; outline: none; resize: none; overflow: hidden;
+            font-family: sans-serif; font-size: 12px; box-sizing: border-box;
+            color: #000; line-height: 1.2;
+        }
+
+        /* Tutorial Modal */
+        #tutorial-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;
+        }
+        .tutorial-content {
+            background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); position: relative;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        #tutorial-canvas-container {
+            width: 100%; height: 250px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 8px;
+            overflow: hidden; position: relative;
+        }
+        .tut-nav { display: flex; justify-content: space-between; margin-top: 10px; }
+        .tut-title { font-weight: bold; font-size: 18px; margin-bottom: 5px; }
+        .tut-desc { font-size: 14px; color: #555; height: 40px; }
+
+        .menu-row, .editor-row { display: flex; gap: 5px; align-items: center; width: 100%; }
+        .menu-label { font-size: 11px; font-weight: bold; color: #666; margin-bottom: 2px; display: block; }
+
+        button {
+            padding: 6px 12px; cursor: pointer; border: 1px solid #ccc;
+            background: #fff; border-radius: 4px; font-weight: 600; font-size: 16px;
+            display: flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s; min-width: 40px;
+        }
+        button:hover { background-color: #f0f0f0; transform: translateY(-1px); }
+        button.active { background-color: #e3f2fd; border-color: #2196f3; color: #0d47a1; box-shadow: inset 0 0 3px rgba(33, 150, 243, 0.2); }
+        button.danger { color: #d32f2f; border-color: #ef9a9a; } button.danger:hover { background-color: #ffebee; }
+        
+        button.style-btn, .editor-btn { flex: 1; padding: 8px; justify-content: center; font-size: 16px; }
+        button.text-btn { font-size: 13px; min-width: auto; }
+        .sep { width: 1px; height: 20px; background: #ddd; margin: 0 2px; }
+
+        /* Editor Input */
+        #editor-name { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 16px; }
+
+        #instructions { 
+            position: absolute; bottom: 15px; left: 15px; 
+            background: rgba(255,255,255,0.9); padding: 10px; border-radius: 5px;
+            color: #444; font-size: 12px; pointer-events: none; border: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar">
+        <button title="Add Male" onclick="addPersonAction('male')">
+            <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                <rect x="2" y="2" width="20" height="20" fill="white" stroke="black" stroke-width="2"/>
+            </svg>
+        </button>
+        <button title="Add Female" onclick="addPersonAction('female')">
+            <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                <circle cx="12" cy="12" r="10" fill="white" stroke="black" stroke-width="2"/>
+            </svg>
+        </button>
+        <button title="Add Triangle" onclick="addPersonAction('triangle')">
+            <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                <polygon points="12,2 22,22 2,22" fill="white" stroke="black" stroke-width="2"/>
+            </svg>
+        </button>
+        <div class="sep"></div>
+        <button title="Add Text Box" onclick="addTextAction()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+        </button>
+        <div class="sep"></div>
+        <button title="Undo" onclick="undo()">
+            <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                <path d="M9 14L4 9l5-5" stroke="#5f6368" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11" stroke="#5f6368" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <button title="Redo" onclick="redo()">
+            <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                <path d="M15 14l5-5-5-5" stroke="#5f6368" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13" stroke="#5f6368" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <div class="sep"></div>
+        <button class="danger text-btn" title="Delete Selected" onclick="deleteSelectedAction()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+        </button>
+        <div class="sep"></div>
+        <button title="Save Image" onclick="downloadImage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+        </button>
+        <button class="danger text-btn" onclick="clearCanvasAction()">❌ Clear</button>
+        
+        <!-- Tutorial Button -->
+        <button class="text-btn" onclick="openTutorial()" style="margin-left: auto; background: #f0f0f0; border-color: #ccc; color: #333;">❓ Tutorial</button>
+    </div>
+
+    <!-- Node Editor (Double Tap for Shapes) -->
+    <div id="node-editor">
+        <input type="text" id="editor-name" placeholder="Name">
+        
+        <div class="editor-row">
+            <button id="edit-btn-white" class="editor-btn" onclick="setEditorStyle('white')" title="Unaffected">
+                <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <rect x="2" y="2" width="20" height="20" fill="white" stroke="black" stroke-width="2"/>
+                </svg>
+            </button>
+            <button id="edit-btn-half" class="editor-btn" onclick="setEditorStyle('half')" title="Carrier">
+                <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <rect x="2" y="2" width="20" height="20" fill="white" stroke="black" stroke-width="2"/>
+                    <rect x="2" y="2" width="10" height="20" fill="#444444"/>
+                </svg>
+            </button>
+            <button id="edit-btn-black" class="editor-btn" onclick="setEditorStyle('black')" title="Affected">
+                <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
+                    <rect x="2" y="2" width="20" height="20" fill="#444444" stroke="black" stroke-width="2"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="editor-row">
+            <button id="edit-btn-deceased" class="editor-btn" onclick="toggleEditorDeceased()">⊘ Dead</button>
+            <button id="edit-btn-proband" class="editor-btn" onclick="toggleEditorProband()">↗︎</button>
+        </div>
+    </div>
+
+    <!-- Text Toolbar (Floating) -->
+    <!-- onmousedown prevents focus stealing so the text editor stays active -->
+    <div id="text-toolbar" onmousedown="if(event.target.tagName !== 'INPUT') event.preventDefault();">
+        <span style="font-size:12px; font-weight:bold; color:#666;">Size:</span>
+        <input type="number" id="font-size-input" value="12" min="10" max="72" style="width: 45px; height: 26px; padding: 2px 4px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" title="Font Size" oninput="setTextFontSize(this.value)">
+        <div class="sep"></div>
+        <button class="style-btn" onclick="setTextAlign('left')" title="Align Left">
+            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+        <button class="style-btn" onclick="setTextAlign('center')" title="Align Center">
+            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+        <button class="style-btn" onclick="setTextAlign('right')" title="Align Right">
+            <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="10" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+        </button>
+        <div class="sep"></div>
+        <button class="style-btn" onclick="toggleTextBorder()" title="Toggle Border">🔲</button>
+    </div>
+
+    <!-- Hidden Text Area for seamless multi-line editing -->
+    <textarea id="text-editor"></textarea>
+
+    <!-- Context Menu (Right Click backup) -->
+    <div id="context-menu" oncontextmenu="return false;">
+        <div id="menu-node-options" class="menu-group">
+            <span class="menu-label">Quick Actions</span>
+            <div class="menu-row">
+                <button id="ctx-btn-white" class="style-btn" onclick="setShapeFill('white')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle;">
+                        <rect x="2" y="2" width="20" height="20" fill="white" stroke="black" stroke-width="2"/>
+                    </svg>
+                </button>
+                <button id="ctx-btn-half" class="style-btn" onclick="setShapeFill('half')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle;">
+                        <rect x="2" y="2" width="20" height="20" fill="white" stroke="black" stroke-width="2"/>
+                        <rect x="2" y="2" width="10" height="20" fill="#444444"/>
+                    </svg>
+                </button>
+                <button id="ctx-btn-black" class="style-btn" onclick="setShapeFill('black')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" style="vertical-align: middle;">
+                        <rect x="2" y="2" width="20" height="20" fill="#444444" stroke="black" stroke-width="2"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="menu-row">
+                <button id="ctx-btn-deceased" class="style-btn" onclick="toggleDeceased()">⊘</button>
+                <button id="ctx-btn-proband" class="style-btn" onclick="toggleProband()">↗︎</button>
+            </div>
+        </div>
+        <div id="menu-line-options" class="menu-group" style="display:none;">
+            <span class="menu-label">Line Style</span>
+            <div class="menu-row">
+                <button id="ctx-btn-sep" class="style-btn" onclick="toggleSeparated()">⫽</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tutorial Modal -->
+    <div id="tutorial-modal" onclick="closeTutorial()">
+        <div class="tutorial-content" onclick="event.stopPropagation()">
+            <div class="tut-title">Tutorial <span id="tut-page-num">1/3</span></div>
+            <div id="tutorial-canvas-container"></div>
+            <div class="tut-desc" id="tut-desc">Demonstration description here.</div>
+            <div class="tut-nav">
+                <button id="btn-tut-prev" onclick="prevTutorialPage()">Prev</button>
+                <button id="btn-tut-next" onclick="nextTutorialPage()">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="instructions">
+        "Enjoy Easy-pedigree by Wichku😎"
+    </div>
+
+    <div id="container"></div>
+
+    <script>
+        const GRID_SIZE = 80;
+        const SHAPE_SIZE = 40;
+        const DARK_GREY = '#444444'; 
+        const toolbarEl = document.getElementById('toolbar');
+        const VIRTUAL_SIZE = 10000; 
+
+        function getStageDims() {
+            return { width: window.innerWidth, height: window.innerHeight - toolbarEl.offsetHeight };
+        }
+        const dims = getStageDims();
+
+        const stage = new Konva.Stage({ container: 'container', width: dims.width, height: dims.height });
+        const layer = new Konva.Layer();
+        const gridLayer = new Konva.Layer();
+        const dragLayer = new Konva.Layer(); 
+        stage.add(gridLayer); stage.add(layer); stage.add(dragLayer);
+
+        // --- Text Box Transformer ---
+        const textTransformer = new Konva.Transformer({
+            nodes: [],
+            enabledAnchors: ['bottom-right'],
+            rotateEnabled: false, 
+            keepRatio: false, // Disabled aspect ratio locking for free stretch
+            borderStroke: '#2196f3',
+            anchorStroke: '#2196f3',
+            anchorFill: 'white',
+            anchorSize: 10,
+            boundBoxFunc: (oldBox, newBox) => {
+                if (newBox.width < 50) newBox.width = 50;
+                if (newBox.height < 30) newBox.height = 30;
+                return newBox;
+            }
+        });
+        layer.add(textTransformer);
+
+        function drawGrid() {
+            gridLayer.destroyChildren();
+            const start = -VIRTUAL_SIZE / 2;
+            const end = VIRTUAL_SIZE / 2;
+            for (let x = start; x <= end; x += GRID_SIZE) {
+                gridLayer.add(new Konva.Line({ points: [x, start, x, end], stroke: '#e0e0e0', strokeWidth: 1, dash: [4, 4] }));
+            }
+            for (let y = start; y <= end; y += GRID_SIZE) {
+                gridLayer.add(new Konva.Line({ points: [start, y, end, y], stroke: '#e0e0e0', strokeWidth: 1, dash: [4, 4] }));
+            }
+            gridLayer.add(new Konva.Circle({ x: 0, y: 0, radius: 3, fill: '#ccc' }));
+        }
+        drawGrid();
+        
+        stage.x(dims.width/2);
+        stage.y(dims.height/2);
+
+        let isConnectMode = true, idCounter = 1;
+        let selectedNodes = [], selectedLine = null, connections = [], historyStack = [], redoStack = [];
+        let isSelecting = false, selectionStart = {x:0,y:0};
+        const selectionRect = new Konva.Rect({ fill: 'rgba(33, 150, 243, 0.2)', stroke: '#2196f3', visible: false });
+        dragLayer.add(selectionRect);
+
+        // --- TUTORIAL LOGIC ---
+        let tutStage, tutLayer;
+        let tutTimeouts = [];
+        let tutPage = 1;
+
+        function openTutorial() {
+            document.getElementById('tutorial-modal').style.display = 'flex';
+            if(!tutStage) {
+                tutStage = new Konva.Stage({ container: 'tutorial-canvas-container', width: 500, height: 250 });
+                tutLayer = new Konva.Layer();
+                tutStage.add(tutLayer);
+            }
+            playTutorial(1);
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorial-modal').style.display = 'none';
+            stopTutorialAnim();
+        }
+
+        function nextTutorialPage() { if(tutPage < 3) playTutorial(tutPage + 1); } 
+        function prevTutorialPage() { if(tutPage > 1) playTutorial(tutPage - 1); }
+
+        function stopTutorialAnim() {
+            tutTimeouts.forEach(id => clearTimeout(id));
+            tutTimeouts = [];
+            if(tutLayer) { tutLayer.destroyChildren(); tutLayer.draw(); }
+        }
+
+        function playTutorial(page) {
+            stopTutorialAnim();
+            tutPage = page;
+            document.getElementById('tut-page-num').innerText = page + "/3";
+            document.getElementById('btn-tut-prev').style.visibility = (page === 1) ? 'hidden' : 'visible';
+            document.getElementById('btn-tut-next').style.visibility = (page === 3) ? 'hidden' : 'visible';
+
+            const desc = document.getElementById('tut-desc');
+            const curs = new Konva.Circle({ radius: 8, fill: 'red', opacity: 0.7, listening: false, zIndex: 999 });
+            let time = 0;
+            const act = (delay, fn) => {
+                const t = setTimeout(() => { if(tutLayer) { fn(); tutLayer.draw(); } }, time += delay);
+                tutTimeouts.push(t);
+            };
+
+            const drawTutToolbar = () => {
+                const bar = new Konva.Rect({width:500, height:40, fill:'white', stroke:'#ccc', strokeWidth:1});
+                const btnM = new Konva.Rect({x:10, y:5, width:35, height:30, stroke:'#ccc', cornerRadius:4});
+                const iconM = new Konva.Rect({x:20, y:12, width:15, height:15, stroke:'black', strokeWidth:2});
+                const btnF = new Konva.Rect({x:55, y:5, width:35, height:30, stroke:'#ccc', cornerRadius:4});
+                const iconF = new Konva.Circle({x:72.5, y:20, radius:7.5, stroke:'black', strokeWidth:2});
+                tutLayer.add(bar, btnM, iconM, btnF, iconF);
+            };
+
+            const drawTNode = (x,y,type,name,fill,slash,text) => {
+                const grp = new Konva.Group({x,y});
+                const size=40;
+                const shp = type==='male'?new Konva.Rect({width:size,height:size,offsetX:size/2,offsetY:size/2,stroke:'black',strokeWidth:2}):new Konva.Circle({radius:size/2,stroke:'black',strokeWidth:2});
+                if(fill==='half'){
+                    let sx=-20, ex=20; if(type==='male'){sx=0;ex=40;}
+                    shp.fillLinearGradientStartPoint({x:sx,y:0}); shp.fillLinearGradientEndPoint({x:ex,y:0});
+                    shp.fillLinearGradientColorStops([0,DARK_GREY,0.5,DARK_GREY,0.5,'white',1,'white']); shp.fillPriority('linear-gradient');
+                } else if(fill==='black'){ shp.fill(DARK_GREY); } else { shp.fill('white'); }
+                const sl = new Konva.Line({points:[-24,24,24,-24],stroke:'black',strokeWidth:2,visible:!!slash});
+                const lbl = new Konva.Text({text:text||name,fontSize:12,y:25,width:100,offsetX:50,align:'center'});
+                grp.add(shp,sl,lbl);
+                tutLayer.add(grp);
+                return grp;
+            };
+            const drawTLine = (x1,y1,x2,y2, slashed) => {
+                const l = new Konva.Line({points:[x1,y1,x2,y2],stroke:'black',strokeWidth:2});
+                const sl = new Konva.Line({points:[(x1+x2)/2-6, (y1+y2)/2+12, (x1+x2)/2+6, (y1+y2)/2-12], stroke:'black', strokeWidth:2, visible:slashed});
+                tutLayer.add(l,sl);
+                l.moveToBottom();
+            };
+            const highlight = (node) => { node.children[0].stroke('#2196f3'); node.children[0].strokeWidth(4); };
+            const unhighlight = () => { tutLayer.find('Group').forEach(g=> { g.children[0].stroke('black'); g.children[0].strokeWidth(2); }); };
+
+            if(page === 1) {
+                desc.innerText = "1. Add Male & Female from toolbar, then tap both to connect (Marriage).";
+                drawTutToolbar();
+                tutLayer.add(curs); curs.position({x:200,y:200}); curs.moveToTop();
+                
+                act(500, () => curs.to({x:27.5, y:20, duration:0.5})); 
+                act(600, () => {
+                    const r = new Konva.Circle({x:27.5,y:20,radius:15,fill:'rgba(0,0,0,0.1)',opacity:1});
+                    tutLayer.add(r); r.to({opacity:0, duration:0.2});
+                    drawTNode(100, 100, 'male', '', 'white'); 
+                }); 
+                act(500, () => curs.to({x:72.5, y:20, duration:0.5}));
+                act(600, () => {
+                    const r = new Konva.Circle({x:72.5,y:20,radius:15,fill:'rgba(0,0,0,0.1)',opacity:1});
+                    tutLayer.add(r); r.to({opacity:0, duration:0.2});
+                    drawTNode(250, 100, 'female', '', 'white'); 
+                });
+                act(500, () => curs.to({x:100, y:100, duration:0.5})); 
+                act(600, () => { highlight(tutLayer.find('Group')[0]); const ring = new Konva.Ring({x:100,y:100,innerRadius:10,outerRadius:15,fill:'rgba(33,150,243,0.5)', opacity:0}); tutLayer.add(ring); ring.to({opacity:1, duration:0.1, onFinish:()=>ring.destroy()}); });
+                act(500, () => curs.to({x:250, y:100, duration:0.5})); 
+                act(600, () => { unhighlight(); drawTLine(100,100,250,100,false); const ring = new Konva.Ring({x:250,y:100,innerRadius:10,outerRadius:15,fill:'rgba(33,150,243,0.5)', opacity:0}); tutLayer.add(ring); ring.to({opacity:1, duration:0.1, onFinish:()=>ring.destroy()}); });
+                act(1500, () => playTutorial(1)); 
+            } 
+            else if (page === 2) {
+                desc.innerText = "2. Add children, drag to select multiple, then tap marriage line.";
+                drawTutToolbar();
+                drawTNode(100, 80, 'male', '', 'white');
+                drawTNode(250, 80, 'female', '', 'white');
+                drawTLine(100, 80, 250, 80, false);
+                tutLayer.add(curs); curs.position({x:200, y:200}); curs.moveToTop();
+
+                act(500, () => curs.to({x:27.5, y:20, duration:0.2}));
+                act(300, () => drawTNode(100, 200, 'male', '', 'white')); 
+                act(500, () => curs.to({x:72.5, y:20, duration:0.2}));
+                act(300, () => drawTNode(250, 200, 'female', '', 'white')); 
+                act(500, () => curs.position({x:50, y:150})); 
+                act(100, () => { const rect = new Konva.Rect({x:50,y:150,width:0,height:0,fill:'rgba(33,150,243,0.2)',stroke:'#2196f3'}); tutLayer.add(rect); rect.to({width:250, height:100, duration:0.5}); curs.to({x:300, y:250, duration:0.5}); });
+                act(600, () => { tutLayer.find('Rect').forEach(r => { if(r.fill()=='rgba(33,150,243,0.2)') r.destroy(); }); const grps = tutLayer.find('Group'); if(grps[2]) highlight(grps[2]); if(grps[3]) highlight(grps[3]); });
+                act(500, () => curs.to({x:175, y:80, duration:0.3}));
+                act(400, () => { unhighlight(); const midY = (80+200)/2; const l1 = new Konva.Line({points:[175,80,175,midY,100,midY,100,200],stroke:'black',strokeWidth:2}); const l2 = new Konva.Line({points:[175,80,175,midY,250,midY,250,200],stroke:'black',strokeWidth:2}); tutLayer.add(l1,l2); l1.moveToBottom(); l2.moveToBottom(); });
+                act(1500, () => playTutorial(2));
+            }
+            else if (page === 3) {
+                desc.innerText = "3. Double-tap to edit Style"; 
+                let m = drawTNode(250, 100, 'male', '', 'white'); 
+                tutLayer.add(curs); curs.position({x:200, y:200}); curs.moveToTop();
+
+                act(500, () => curs.to({x:250, y:100, duration:0.5}));
+                act(600, () => { const ring = new Konva.Ring({x:250,y:100,innerRadius:20,outerRadius:25,stroke:'rgba(33,150,243,0.5)', opacity:0}); tutLayer.add(ring); ring.to({opacity:1, duration:0.1, onFinish: () => { ring.to({opacity:0, duration:0.1, delay:0.1, onFinish: () => ring.destroy()}); }}); });
+
+                let editorGroup;
+                act(400, () => {
+                    editorGroup = new Konva.Group({x:140, y:60}); 
+                    const w = 220, h = 144; 
+                    
+                    const bg = new Konva.Rect({width:w, height:h, fill:'white', stroke:'#ccc', cornerRadius:12, shadowBlur:15, shadowOpacity:0.2});
+                    
+                    const inputName = new Konva.Rect({x:12, y:12, width:196, height:30, stroke:'#ccc', cornerRadius:4});
+                    const txtName = new Konva.Text({text:"Name", x:20, y:21, fontSize:14, fill:'#999'});
+
+                    const btnY = 52; 
+                    const btnW = 60, btnH = 35, gap = 8;
+                    const btnWhite = new Konva.Rect({x:12, y:btnY, width:btnW, height:btnH, stroke:'#ccc', cornerRadius:4});
+                    const iconWhite = new Konva.Rect({x:12+(btnW-20)/2, y:btnY+(btnH-20)/2, width:20, height:20, stroke:'black', strokeWidth:2, fill:'white'});
+                    
+                    const btnHalf = new Konva.Rect({x:12+btnW+gap, y:btnY, width:btnW, height:btnH, stroke:'#ccc', cornerRadius:4});
+                    const iconHalfBg = new Konva.Rect({x:12+btnW+gap+(btnW-20)/2, y:btnY+(btnH-20)/2, width:20, height:20, stroke:'black', strokeWidth:2, fill:'white'});
+                    const iconHalfFill = new Konva.Rect({x:12+btnW+gap+(btnW-20)/2, y:btnY+(btnH-20)/2, width:10, height:20, fill:'#444444'});
+
+                    const btnBlack = new Konva.Rect({x:12+(btnW+gap)*2, y:btnY, width:btnW, height:btnH, stroke:'#ccc', cornerRadius:4});
+                    const iconBlack = new Konva.Rect({x:12+(btnW+gap)*2+(btnW-20)/2, y:btnY+(btnH-20)/2, width:20, height:20, fill:'#444444', stroke:'black', strokeWidth:2});
+
+                    const mBtnY = 97; 
+                    const mBtnW = 94; 
+                    const btnSlash = new Konva.Rect({x:12, y:mBtnY, width:mBtnW, height:btnH, stroke:'#ccc', cornerRadius:4});
+                    const txtSlash = new Konva.Text({text:"⊘ Dead", x:12, width:mBtnW, y:mBtnY+12, align:'center', fontSize:12});
+
+                    const btnIndex = new Konva.Rect({x:12+mBtnW+gap, y:mBtnY, width:mBtnW, height:btnH, stroke:'#ccc', cornerRadius:4});
+                    const txtIndex = new Konva.Text({text:"↗︎", x:12+mBtnW+gap, width:mBtnW, y:mBtnY+12, align:'center', fontSize:14});
+
+                    editorGroup.add(bg, inputName, txtName, btnWhite, iconWhite, btnHalf, iconHalfBg, iconHalfFill, btnBlack, iconBlack, btnSlash, txtSlash, btnIndex, txtIndex);
+                    
+                    tutLayer.add(editorGroup); curs.moveToTop();
+                });
+
+                act(500, () => curs.to({x:250, y:129, duration:0.5}));
+                act(600, () => { const r = new Konva.Circle({x:250,y:129,radius:15,fill:'rgba(0,0,0,0.1)',opacity:1}); tutLayer.add(r); r.to({opacity:0, duration:0.2}); m.destroy(); m = drawTNode(250, 100, 'male', '', 'half'); if(editorGroup) editorGroup.moveToTop(); curs.moveToTop(); });
+                
+                act(500, () => curs.to({x:199, y:174, duration:0.5}));
+                act(600, () => { const r = new Konva.Circle({x:199,y:174,radius:15,fill:'rgba(0,0,0,0.1)',opacity:1}); tutLayer.add(r); r.to({opacity:0, duration:0.2}); m.destroy(); m = drawTNode(250, 100, 'male', '', 'half', true); if(editorGroup) editorGroup.moveToTop(); curs.moveToTop(); });
+                
+                act(500, () => curs.to({x:400, y:200, duration:0.5})); 
+                act(600, () => { 
+                    const r = new Konva.Circle({x:400,y:200,radius:15,fill:'rgba(0,0,0,0.1)',opacity:1}); 
+                    tutLayer.add(r); r.to({opacity:0, duration:0.2}); 
+                    if(editorGroup) editorGroup.destroy(); 
+                });
+
+                act(1500, () => playTutorial(3));
+            }
+        }
+
+        // --- ZOOM & PAN LOGIC ---
+        let lastCenter = null;
+        let lastDist = 0;
+
+        stage.on('touchmove', function (e) {
+            const touch1 = e.evt.touches[0];
+            const touch2 = e.evt.touches[1];
+            if (touch1 && touch2) {
+                e.evt.preventDefault();
+                if(isSelecting) { isSelecting=false; selectionRect.visible(false); }
+                if(stage.isDragging()) stage.stopDrag();
+
+                const p1 = { x: touch1.clientX, y: touch1.clientY };
+                const p2 = { x: touch2.clientX, y: touch2.clientY };
+
+                if (!lastCenter) { lastCenter = getCenter(p1, p2); return; }
+                const newCenter = getCenter(p1, p2);
+                const dist = getDistance(p1, p2);
+
+                if (!lastDist) lastDist = dist;
+
+                const pointTo = {
+                    x: (newCenter.x - stage.x()) / stage.scaleX(),
+                    y: (newCenter.y - stage.y()) / stage.scaleX(),
+                };
+
+                const scale = stage.scaleX() * (dist / lastDist);
+                stage.scale({ x: scale, y: scale });
+
+                const dx = newCenter.x - lastCenter.x;
+                const dy = newCenter.y - lastCenter.y;
+
+                const newPos = { x: newCenter.x - pointTo.x * scale + dx, y: newCenter.y - pointTo.y * scale + dy };
+                stage.position(newPos);
+                lastDist = dist;
+                lastCenter = newCenter;
+            }
+        });
+
+        stage.on('touchend', function () { lastDist = 0; lastCenter = null; });
+
+        stage.on('wheel', (e) => {
+            e.evt.preventDefault();
+            const scaleBy = 1.1;
+            const oldScale = stage.scaleX();
+            const pointer = stage.getPointerPosition();
+            const mousePointTo = { x: (pointer.x - stage.x()) / oldScale, y: (pointer.y - stage.y()) / oldScale };
+            const direction = e.evt.deltaY > 0 ? -1 : 1; 
+            const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
+            if (newScale < 0.1 || newScale > 5) return;
+            stage.scale({ x: newScale, y: newScale });
+            const newPos = { x: pointer.x - mousePointTo.x * newScale, y: pointer.y - mousePointTo.y * newScale };
+            stage.position(newPos);
+        });
+
+        function getDistance(p1, p2) { return Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2)); }
+        function getCenter(p1, p2) { return { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }; }
+
+        function saveHistory() {
+            redoStack = []; 
+            const state = JSON.stringify({
+                idCounter, 
+                nodes: layer.find('.person-group').map(g => ({
+                    id: g.id(), x: g.x(), y: g.y(), type: g.getAttr('personType'), name: g.findOne('.label-text').text(),
+                    fillType: g.getAttr('fillType')||'white', isProband: g.getAttr('isProband'), isDeceased: g.getAttr('isDeceased')
+                })),
+                textboxes: layer.find('.text-box-group').map(g => ({
+                    id: g.id(), x: g.x(), y: g.y(), width: g.width(), height: g.height(),
+                    text: g.findOne('.content-text').text(), align: g.getAttr('align'), 
+                    showBorder: g.getAttr('showBorder'), fontSize: g.findOne('.content-text').fontSize()
+                })),
+                connections: connections.map(c => ({
+                    id: c.id, type: c.type, p1Id: c.p1Id, p2Id: c.p2Id, parentConnId: c.parentConnId, childId: c.childId, isSeparated: c.isSeparated
+                }))
+            });
+            historyStack.push(state); if(historyStack.length>20) historyStack.shift();
+        }
+
+        function undo() { if(historyStack.length){ const s=historyStack.pop(); redoStack.push(JSON.stringify(serializeState())); loadState(JSON.parse(s)); } }
+        function redo() { if(redoStack.length){ const s=redoStack.pop(); historyStack.push(JSON.stringify(serializeState())); loadState(JSON.parse(s)); } }
+        function serializeState() { 
+            return { 
+                idCounter, 
+                nodes: layer.find('.person-group').map(g=>({id:g.id(),x:g.x(),y:g.y(),type:g.getAttr('personType'),name:g.findOne('.label-text').text(),fillType:g.getAttr('fillType'),isProband:g.getAttr('isProband'),isDeceased:g.getAttr('isDeceased')})), 
+                textboxes: layer.find('.text-box-group').map(g=>({id:g.id(),x:g.x(),y:g.y(),width:g.width(),height:g.height(),text:g.findOne('.content-text').text(),align:g.getAttr('align'),showBorder:g.getAttr('showBorder'),fontSize:g.findOne('.content-text').fontSize()})),
+                connections: connections.map(c=>({id:c.id,type:c.type,p1Id:c.p1Id,p2Id:c.p2Id,parentConnId:c.parentConnId,childId:c.childId,isSeparated:c.isSeparated})) 
+            }; 
+        }
+
+        function loadState(state) {
+            layer.destroyChildren(); connections=[]; clearSelection(); hideContextMenu(); closeEditor(); closeTextEditor();
+            idCounter = state.idCounter;
+            layer.add(textTransformer); 
+            
+            state.nodes.forEach(d=>createNode(d.x,d.y,d.type,d.id,d.name,d.fillType,d.isProband,d.isDeceased));
+            
+            if (state.textboxes) {
+                state.textboxes.forEach(d=>createTextBox(d.x, d.y, d.id, d.text, d.width, d.height, d.align, d.showBorder, d.fontSize, false));
+            }
+
+            state.connections.filter(c=>c.type==='marriage').forEach(c=>createMarriage(layer.findOne('#'+c.p1Id),layer.findOne('#'+c.p2Id),c.id,false,c.isSeparated));
+            state.connections.filter(c=>c.type==='descent').forEach(c=>{
+                const p=connections.find(x=>x.id===c.parentConnId), ch=layer.findOne('#'+c.childId);
+                if(p&&ch) createDescent(p,ch,c.id,false);
+            });
+            layer.draw();
+        }
+
+        function findEmptyPosition() {
+            const transform = stage.getAbsoluteTransform().copy().invert();
+            const topLeft = transform.point({ x: 0, y: 0 });
+            const bottomRight = transform.point({ x: stage.width(), y: stage.height() });
+            
+            const centerX = (topLeft.x + bottomRight.x) / 2;
+            const centerY = (topLeft.y + bottomRight.y) / 2;
+            
+            let targetX = Math.round(centerX / GRID_SIZE) * GRID_SIZE;
+            const targetY = Math.round(centerY / GRID_SIZE) * GRID_SIZE;
+
+            let searchCount = 0;
+            while (searchCount < 1000) { 
+                const isOccupied = layer.find('.person-group').some(node => {
+                    const dx = node.x() - targetX;
+                    const dy = node.y() - targetY;
+                    return Math.sqrt(dx*dx + dy*dy) < GRID_SIZE / 2;
+                });
+
+                if (!isOccupied) {
+                    return { x: targetX, y: targetY };
+                }
+                targetX += GRID_SIZE;
+                searchCount++;
+            }
+            return { x: targetX, y: targetY };
+        }
+
+        function addPersonAction(t) { saveHistory(); const p=findEmptyPosition(); createNode(p.x, p.y, t, 'node-'+idCounter++, '', 'white', false, false); }
+        
+        function addTextAction() {
+            saveHistory();
+            const transform = stage.getAbsoluteTransform().copy().invert();
+            const center = transform.point({ x: stage.width() / 2, y: stage.height() / 2 });
+            const x = Math.round(center.x / GRID_SIZE) * GRID_SIZE;
+            const y = Math.round(center.y / GRID_SIZE) * GRID_SIZE;
+            createTextBox(x, y, 'text-' + idCounter++, 'Double click to edit...', 160, 60, 'left', true, 12, false);
+        }
+
+        function deleteSelectedAction() { 
+            // Safe teardown of editors if they belong to a deleted node
+            if (editingTextGroup && (selectedNodes.includes(editingTextGroup) || selectedNodes.length === 0)) {
+                textEditor.style.display = 'none';
+                textEditor.oninput = null;
+                editingTextGroup = null;
+                document.getElementById('text-toolbar').style.display = 'none';
+            }
+            if (editingShapeNode && (selectedNodes.includes(editingShapeNode) || selectedNodes.length === 0)) {
+                editor.style.display = 'none';
+                editingShapeNode = null;
+            }
+
+            if(selectedNodes.length || selectedLine) { 
+                saveHistory(); 
+                selectedNodes.forEach(n => {
+                    if (n.name() === 'text-box-group') {
+                        n.destroy();
+                    } else {
+                        deleteNode(n);
+                    }
+                });
+                if(selectedLine) {
+                    const conn = getAssociatedConn(selectedLine);
+                    if (conn) deleteConnection(conn);
+                }
+                selectedNodes = [];
+                selectedLine = null;
+                hideContextMenu();
+                clearSelection();
+                layer.draw();
+            }
+        }
+
+        function clearCanvasAction() { 
+            if (editingTextGroup) {
+                textEditor.style.display = 'none';
+                textEditor.oninput = null;
+                editingTextGroup = null;
+                document.getElementById('text-toolbar').style.display = 'none';
+            }
+            if (editingShapeNode) {
+                editor.style.display = 'none';
+                editingShapeNode = null;
+            }
+            saveHistory(); 
+            layer.destroyChildren(); 
+            layer.add(textTransformer); 
+            connections=[]; 
+            idCounter=1; 
+            clearSelection(); 
+        }
+
+        // --- TEXT BOX LOGIC ---
+
+        function createTextBox(x, y, id, textContent, width, height, align, showBorder, fontSize = 12, save=true) {
+            if(save) saveHistory();
+
+            const group = new Konva.Group({
+                x, y, width, height, draggable: true, name: 'text-box-group', id,
+                align: align, showBorder: showBorder, fontSize: fontSize,
+                dragBoundFunc: function(pos) {
+                    const shapeNode = selectedNodes.find(n => n.name() === 'person-group');
+                    if (shapeNode && this.sdx !== undefined && shapeNode.sdx !== undefined) {
+                        const scale = stage.scaleX();
+                        const sx = stage.x();
+                        const sy = stage.y();
+                        
+                        const propRelTextX = (pos.x - sx) / scale;
+                        const propRelTextY = (pos.y - sy) / scale;
+                        
+                        const dx = propRelTextX - this.sdx;
+                        const dy = propRelTextY - this.sdy;
+                        
+                        const propRelShapeX = shapeNode.sdx + dx;
+                        const propRelShapeY = shapeNode.sdy + dy;
+                        
+                        const snappedRelShapeX = Math.round(propRelShapeX / GRID_SIZE) * GRID_SIZE;
+                        const snappedRelShapeY = Math.round(propRelShapeY / GRID_SIZE) * GRID_SIZE;
+                        
+                        const snappedDx = snappedRelShapeX - shapeNode.sdx;
+                        const snappedDy = snappedRelShapeY - shapeNode.sdy;
+                        
+                        const finalRelTextX = this.sdx + snappedDx;
+                        const finalRelTextY = this.sdy + snappedDy;
+                        
+                        return {
+                            x: finalRelTextX * scale + sx,
+                            y: finalRelTextY * scale + sy
+                        };
+                    }
+                    return pos; // Free movement for text boxes when dragged alone
+                }
+            });
+
+            const rect = new Konva.Rect({
+                width, height, stroke: showBorder ? 'black' : null, strokeWidth: 1, 
+                fill: 'rgba(0,0,0,0)', // Invisible but clickable background
+                name: 'text-bg'
+            });
+
+            const isPlaceholder = textContent === 'Double click to edit...';
+
+            const text = new Konva.Text({
+                text: textContent, width, height, padding: 10, align: align, 
+                verticalAlign: 'top', fontSize: fontSize, fontFamily: 'sans-serif', 
+                fill: isPlaceholder ? '#999' : 'black', name: 'content-text', wrap: 'word', lineHeight: 1.2
+            });
+
+            group.add(rect, text);
+
+            group.on('transform', () => {
+                const sx = group.scaleX();
+                const sy = group.scaleY();
+                const w = Math.max(50, group.width() * sx);
+                const h = Math.max(30, group.height() * sy);
+                
+                group.scaleX(1); group.scaleY(1);
+                group.width(w); group.height(h);
+
+                rect.width(w); rect.height(h);
+                text.width(w); text.height(h);
+                
+                if (editingTextGroup === group) {
+                    textEditor.style.width = (w * stage.scaleX()) + 'px';
+                    textEditor.style.height = (h * stage.scaleY()) + 'px';
+                }
+                positionTextToolbar(group);
+            });
+
+            group.on('dragstart', (e) => {
+                hideContextMenu(); closeEditor(); closeTextEditor();
+                if(!isSelected(group) && !e.evt.shiftKey) selectSingle(group);
+                saveHistory(); 
+                selectedNodes.forEach(n => { n.sdx=n.x(); n.sdy=n.y(); });
+            });
+
+            group.on('dragmove', (e) => {
+                const dx=e.target.x()-e.target.sdx, dy=e.target.y()-e.target.sdy;
+                selectedNodes.forEach(n => { if(n!==e.target) { n.x(n.sdx+dx); n.y(n.sdy+dy); } });
+                updateAllConnections();
+                
+                if (editingTextGroup === group) {
+                    positionTextToolbar();
+                    const pos = group.getAbsolutePosition();
+                    textEditor.style.top = (pos.y + toolbarEl.offsetHeight) + 'px';
+                    textEditor.style.left = pos.x + 'px';
+                }
+            });
+
+            group.on('click tap', (e) => { e.cancelBubble=true; handleNodeClick(group, e); });
+            group.on('dblclick dbltap', (e) => { 
+                e.cancelBubble=true;
+                if (group.isDragging()) return; // Prevent edit mode on drag
+                hideContextMenu(); 
+                if(!isSelected(group)) selectSingle(group); // Ensure selected
+                showTextEditor(group); 
+            });
+            
+            layer.add(group);
+            return group;
+        }
+
+        const textEditor = document.getElementById('text-editor');
+        let editingTextGroup = null;
+
+        function showTextEditor(group) {
+            editingTextGroup = group;
+            const textNode = group.findOne('.content-text');
+            const rectNode = group.findOne('.text-bg');
+            
+            textNode.hide(); 
+            // We do NOT hide the textTransformer so it remains resizable
+            layer.draw();
+
+            let currentText = textNode.text();
+            textEditor.value = currentText === 'Double click to edit...' ? '' : currentText;
+            textEditor.placeholder = 'Double click to edit...';
+
+            textEditor.style.textAlign = group.getAttr('align');
+            textEditor.style.fontSize = (textNode.fontSize() * stage.scaleX()) + 'px';
+            textEditor.style.padding = (10 * stage.scaleX()) + 'px'; 
+            textEditor.style.color = 'black'; // Ensure user types in black
+            
+            const pos = group.getAbsolutePosition();
+            textEditor.style.top = (pos.y + toolbarEl.offsetHeight) + 'px';
+            textEditor.style.left = pos.x + 'px';
+            textEditor.style.width = (group.width() * stage.scaleX()) + 'px';
+            textEditor.style.height = (group.height() * stage.scaleY()) + 'px';
+            textEditor.style.display = 'block';
+            textEditor.focus();
+
+            positionTextToolbar(group);
+            
+            textEditor.oninput = function() {
+                textNode.text(textEditor.value);
+                // Calculate required height based on wrap width and current content
+                const reqHeight = textNode.height(); 
+                // Ensure minimum bounds constraint
+                const minH = Math.max(reqHeight, 30);
+                
+                if (minH > group.height()) {
+                    group.height(minH);
+                    rectNode.height(minH);
+                    textNode.height(minH);
+                    textEditor.style.height = (minH * stage.scaleY()) + 'px';
+                    positionTextToolbar(group);
+                    textTransformer.forceUpdate(); 
+                }
+            };
+        }
+
+        function closeTextEditor() {
+            if (!editingTextGroup) return;
+            // Prevent close operations on nodes that are already deleted or unmounted
+            if (editingTextGroup.isDestroyed || !editingTextGroup.getParent()) {
+                textEditor.style.display = 'none';
+                textEditor.oninput = null;
+                editingTextGroup = null;
+                document.getElementById('text-toolbar').style.display = 'none';
+                return;
+            }
+
+            saveHistory();
+            const textNode = editingTextGroup.findOne('.content-text');
+            
+            let val = textEditor.value.trim();
+            if (val === '') {
+                val = 'Double click to edit...';
+                textNode.fill('#999');
+            } else {
+                textNode.fill('black');
+            }
+            
+            textNode.text(val);
+            
+            // Final resize catch just in case
+            const reqHeight = textNode.height();
+            if (reqHeight > editingTextGroup.height()) {
+                editingTextGroup.height(reqHeight);
+                editingTextGroup.findOne('.text-bg').height(reqHeight);
+                textNode.height(reqHeight);
+            }
+
+            textNode.show();
+            if (selectedNodes.includes(editingTextGroup)) textTransformer.show();
+            
+            textEditor.style.display = 'none';
+            textEditor.oninput = null; // Clean up
+            editingTextGroup = null;
+            positionTextToolbar(); // will hide since editingTextGroup is null
+            textTransformer.forceUpdate();
+            layer.draw();
+        }
+
+        // Robust blur handler to prevent menu clicks from breaking focus
+        function handleTextEditorBlur() {
+            setTimeout(() => {
+                const active = document.activeElement;
+                if (active === textEditor || (active && active.closest('#text-toolbar'))) {
+                    return; // Focus is still within editor or toolbar
+                }
+                closeTextEditor();
+            }, 10);
+        }
+
+        textEditor.addEventListener('blur', handleTextEditorBlur);
+        document.getElementById('font-size-input').addEventListener('blur', handleTextEditorBlur);
+
+        function positionTextToolbar() {
+            if (editingTextGroup) {
+                const tb = document.getElementById('text-toolbar');
+                tb.style.display = 'flex';
+                const pos = editingTextGroup.getAbsolutePosition();
+                tb.style.left = pos.x + 'px';
+                tb.style.top = Math.max(10, pos.y + toolbarEl.offsetHeight - tb.offsetHeight - 8) + 'px';
+                
+                const textNode = editingTextGroup.findOne('.content-text');
+                if (textNode) document.getElementById('font-size-input').value = textNode.fontSize();
+            } else {
+                document.getElementById('text-toolbar').style.display = 'none';
+            }
+        }
+
+        function setTextFontSize(size) {
+            if (editingTextGroup) {
+                saveHistory();
+                const numSize = Number(size) || 12;
+                const textNode = editingTextGroup.findOne('.content-text');
+                textNode.fontSize(numSize);
+                editingTextGroup.setAttr('fontSize', numSize);
+                
+                textEditor.style.fontSize = (textNode.fontSize() * stage.scaleX()) + 'px';
+                if(textEditor.oninput) textEditor.oninput(); // Trigger auto-resize check
+                
+                layer.draw();
+            }
+        }
+
+        function setTextAlign(align) {
+            if (editingTextGroup) {
+                saveHistory();
+                editingTextGroup.setAttr('align', align);
+                editingTextGroup.findOne('.content-text').align(align);
+                textEditor.style.textAlign = align;
+                layer.draw();
+            }
+        }
+
+        function toggleTextBorder() {
+            let targetGroup = editingTextGroup || (selectedNodes.length === 1 && selectedNodes[0].name() === 'text-box-group' ? selectedNodes[0] : null);
+            
+            if (targetGroup) {
+                saveHistory();
+                const current = targetGroup.getAttr('showBorder');
+                targetGroup.setAttr('showBorder', !current);
+                targetGroup.findOne('.text-bg').stroke(!current ? 'black' : null);
+                layer.draw();
+            }
+        }
+
+        // --- SHAPE NODE LOGIC ---
+
+        function createNode(x, y, type, id, name, fill, isProband, isDeceased) {
+            const grp = new Konva.Group({
+                x, y, draggable: true, name: 'person-group', id,
+                personType: type, fillType: fill, isProband, isDeceased,
+                dragBoundFunc: pos => {
+                    const scale = stage.scaleX();
+                    const sx = stage.x();
+                    const sy = stage.y();
+                    const dx = Math.round(((pos.x - sx) / scale) / GRID_SIZE) * GRID_SIZE;
+                    const dy = Math.round(((pos.y - sy) / scale) / GRID_SIZE) * GRID_SIZE;
+                    return { x: dx * scale + sx, y: dy * scale + sy };
+                }
+            });
+            const size=SHAPE_SIZE;
+            const props = { stroke:'black', strokeWidth:2, name:'shape-body', shadowColor:'black', shadowBlur:2, shadowOpacity:0.1 };
+            
+            let shape;
+            if (type === 'male') {
+                shape = new Konva.Rect({ ...props, width: size, height: size, offsetX: size/2, offsetY: size/2 });
+            } else if (type === 'female') {
+                shape = new Konva.Circle({ ...props, radius: size/2 });
+            } else {
+                shape = new Konva.RegularPolygon({ ...props, sides: 3, radius: 24 });
+            }
+            
+            const arrow = new Konva.Arrow({ points:[-35,35,-15,15], pointerLength:8, pointerWidth:8, fill:'black', stroke:'black', strokeWidth:2, name:'proband-arrow', visible:isProband });
+            const slash = new Konva.Line({ points:[-24,24,24,-24], stroke:'black', strokeWidth:2, name:'deceased-slash', visible:isDeceased });
+            const label = new Konva.Text({ text:name, fontSize:12, fontFamily:'Arial', fill:'#555', y:size/2+8, width:100, offsetX:50, align:'center', name:'label-text' });
+
+            grp.add(shape, slash, arrow, label);
+            applyFillStyle(shape, fill);
+
+            grp.on('dragstart', (e) => {
+                hideContextMenu(); closeEditor(); closeTextEditor();
+                if(!isSelected(grp) && !e.evt.shiftKey) selectSingle(grp);
+                saveHistory(); selectedNodes.forEach(n => { n.sdx=n.x(); n.sdy=n.y(); });
+            });
+            grp.on('dragmove', (e) => {
+                const dx=e.target.x()-e.target.sdx, dy=e.target.y()-e.target.sdy;
+                selectedNodes.forEach(n => { if(n!==e.target) { n.x(n.sdx+dx); n.y(n.sdy+dy); } });
+                updateAllConnections();
+            });
+            grp.on('click tap', (e) => { e.cancelBubble=true; handleNodeClick(grp, e); });
+            grp.on('dblclick dbltap', () => { hideContextMenu(); showNodeEditor(grp); });
+            grp.on('contextmenu', (e) => { e.evt.preventDefault(); if(!isSelected(grp)) selectSingle(grp); showContextMenu(e, 'node'); });
+            
+            layer.add(grp); return grp;
+        }
+
+        function createMarriage(p1, p2, id=Date.now(), save=true, isSeparated=false) {
+            if(save) saveHistory();
+            const line = new Konva.Line({ stroke:'black', strokeWidth:2 });
+            const hit = new Konva.Line({ stroke:'transparent', strokeWidth:20, name:'link-hit-area', listening:true });
+            const slash = new Konva.Line({ points:[0,0,0,0], stroke:'black', strokeWidth:2, visible:isSeparated });
+            
+            setupLineEvents(hit, line);
+            layer.add(line, slash, hit); line.moveToBottom(); slash.moveToBottom(); hit.moveToBottom();
+            connections.push({ type:'marriage', id, p1Id:p1.id(), p2Id:p2.id(), line, hitLine:hit, slash, isSeparated });
+            updateAllConnections();
+        }
+        function createDescent(parent, child, id=Date.now(), save=true) {
+            if(save) saveHistory();
+            const line = new Konva.Line({ stroke:'black', strokeWidth:2 });
+            const hit = new Konva.Line({ stroke:'transparent', strokeWidth:15, name:'link-hit-area', listening:true });
+            setupLineEvents(hit, line);
+            layer.add(line, hit); line.moveToBottom(); hit.moveToBottom();
+            connections.push({ type:'descent', id, parentConnId:parent.id, childId:child.id(), line, hitLine:hit });
+            updateAllConnections();
+        }
+        function setupLineEvents(hit, vis) {
+            hit.on('mouseover', () => { document.body.style.cursor='pointer'; vis.strokeWidth(4); });
+            hit.on('mouseout', () => { document.body.style.cursor='default'; if(selectedLine!==hit) vis.strokeWidth(2); });
+            hit.on('click tap', function(e) { e.cancelBubble=true; hideContextMenu(); handleConnectionLogic(this); });
+            hit.on('dblclick dbltap', function(e) {
+                e.cancelBubble = true;
+                const c = getAssociatedConn(this);
+                if(c && c.type === 'marriage') {
+                    saveHistory();
+                    c.isSeparated = !c.isSeparated;
+                    c.slash.visible(c.isSeparated);
+                    layer.draw();
+                }
+            });
+            hit.on('contextmenu', function(e) { e.evt.preventDefault(); if(getAssociatedConn(this).type==='marriage'){ selectLine(this); showContextMenu(e, 'line'); } });
+        }
+
+        function getAssociatedConn(h) { return connections.find(c => c.hitLine===h); }
+        function updateAllConnections() {
+            connections.filter(c => c.type==='marriage').forEach(c => {
+                const p1=layer.findOne('#'+c.p1Id), p2=layer.findOne('#'+c.p2Id);
+                if(!p1||!p2) return;
+                c.line.points([p1.x(),p1.y(),p2.x(),p2.y()]); c.hitLine.points([p1.x(),p1.y(),p2.x(),p2.y()]);
+                c.midX=(p1.x()+p2.x())/2; c.midY=(p1.y()+p2.y())/2;
+                if(c.slash) { c.slash.points([c.midX-6,c.midY+12,c.midX+6,c.midY-12]); c.slash.visible(c.isSeparated); }
+            });
+            connections.filter(c => c.type==='descent').forEach(c => {
+                const p=connections.find(x=>x.id===c.parentConnId), ch=layer.findOne('#'+c.childId);
+                if(!p||!ch) return;
+                let turnY = (p.midY + ch.y()) / 2;
+                if (Math.abs(ch.y() - p.midY) >= GRID_SIZE * 2) {
+                    turnY = p.midY + (GRID_SIZE / 2);
+                }
+                const pts=[p.midX,p.midY,p.midX,turnY,ch.x(),turnY,ch.x(),ch.y()];
+                c.line.points(pts); c.hitLine.points(pts);
+            });
+        }
+
+        function deleteNode(n) {
+            const nid=n.id(), toDel=[];
+            connections.forEach(c => { if((c.childId===nid)||(c.p1Id===nid||c.p2Id===nid)) toDel.push(c); });
+            toDel.forEach(c => deleteConnection(c)); n.destroy(); layer.draw();
+        }
+        function deleteConnection(c) {
+            if(c.type==='marriage') connections.filter(d=>d.parentConnId===c.id).forEach(deleteConnection);
+            c.line.destroy(); c.hitLine.destroy(); if(c.slash) c.slash.destroy();
+            connections = connections.filter(x=>x!==c); layer.draw();
+        }
+
+        const editor = document.getElementById('node-editor');
+        const editorName = document.getElementById('editor-name');
+        let editingShapeNode = null;
+
+        function showNodeEditor(node) {
+            editingShapeNode = node;
+            editorName.value = node.findOne('.label-text').text();
+            
+            const shapePos = node.getAbsolutePosition();
+            const stageBox = stage.container().getBoundingClientRect();
+            
+            let left = stageBox.left + shapePos.x - 100; 
+            let top = stageBox.top + shapePos.y + 60;
+            
+            if (left < 10) left = 10;
+            if (left + 220 > window.innerWidth) left = window.innerWidth - 230;
+            if (top + 160 > window.innerHeight) top = stageBox.top + shapePos.y - 170; 
+
+            editor.style.left = left + 'px';
+            editor.style.top = top + 'px';
+            editor.style.display = 'flex';
+            editorName.focus();
+
+            updateEditorButtons(node);
+        }
+
+        function updateEditorButtons(node) {
+            const fill = node.getAttr('fillType') || 'white';
+            const isDeceased = node.getAttr('isDeceased') || false;
+            const isProband = node.getAttr('isProband') || false;
+
+            ['edit-btn-white', 'edit-btn-half', 'edit-btn-black'].forEach(id => document.getElementById(id).classList.remove('active'));
+            if (fill === 'white') document.getElementById('edit-btn-white').classList.add('active');
+            else if (fill === 'half') document.getElementById('edit-btn-half').classList.add('active');
+            else if (fill === 'black') document.getElementById('edit-btn-black').classList.add('active');
+
+            const btnDec = document.getElementById('edit-btn-deceased');
+            isDeceased ? btnDec.classList.add('active') : btnDec.classList.remove('active');
+
+            const btnProb = document.getElementById('edit-btn-proband');
+            isProband ? btnProb.classList.add('active') : btnProb.classList.remove('active');
+        }
+
+        function closeEditor() {
+            if (editingShapeNode) {
+                saveHistory();
+                editingShapeNode.findOne('.label-text').text(editorName.value);
+            }
+            editor.style.display = 'none';
+            editingShapeNode = null;
+        }
+        editorName.addEventListener("keypress", (e) => { if(e.key==="Enter") closeEditor(); });
+        
+        // Hide editors when clicking elsewhere
+        stage.on('click tap', (e) => { 
+            hideContextMenu();
+            
+            // Handle Shape Editor Close
+            if (editingShapeNode && e.target !== stage) {
+                const clickedGroup = e.target.findAncestor('Group');
+                if (clickedGroup !== editingShapeNode) closeEditor();
+            } else if (editingShapeNode && e.target === stage) {
+                closeEditor();
+            }
+            
+            // Handle Text Editor Close
+            if (editingTextGroup && e.target === stage) {
+                closeTextEditor();
+            }
+        });
+
+        function setEditorStyle(t) { 
+            if(editingShapeNode) { 
+                saveHistory(); 
+                editingShapeNode.setAttr('fillType',t); 
+                applyFillStyle(editingShapeNode.findOne('.shape-body'), t); 
+                updateEditorButtons(editingShapeNode); 
+                layer.draw(); 
+            } 
+        }
+        function toggleEditorDeceased() { 
+            if(editingShapeNode) { 
+                saveHistory(); 
+                const s=editingShapeNode.findOne('.deceased-slash'); 
+                s.visible(!s.visible()); 
+                editingShapeNode.setAttr('isDeceased', s.visible()); 
+                updateEditorButtons(editingShapeNode); 
+                layer.draw(); 
+            } 
+        }
+        function toggleEditorProband() { 
+            if(editingShapeNode) { 
+                saveHistory(); 
+                const a=editingShapeNode.findOne('.proband-arrow'); 
+                a.visible(!a.visible()); 
+                editingShapeNode.setAttr('isProband', a.visible()); 
+                updateEditorButtons(editingShapeNode); 
+                layer.draw(); 
+            } 
+        }
+
+        function isSelected(n) { return selectedNodes.includes(n); }
+        function selectSingle(n) { clearSelection(); selectedNodes=[n]; highlightNodes(); }
+        function selectMultiple(ns) { clearSelection(); selectedNodes=ns; highlightNodes(); }
+        
+        function highlightNodes() { 
+            textTransformer.nodes([]);
+            const textNodes = [];
+
+            selectedNodes.forEach(n => { 
+                if (n.name() === 'person-group') {
+                    const s = n.findOne('.shape-body'); if(s) s.stroke('#2196f3').strokeWidth(3); 
+                } else if (n.name() === 'text-box-group') {
+                    textNodes.push(n);
+                }
+            }); 
+
+            if (textNodes.length > 0) {
+                textTransformer.nodes(textNodes);
+            }
+        }
+        
+        function clearSelection() { 
+            closeTextEditor(); // Automatically close editor when clicking away
+
+            selectedNodes.forEach(n => { 
+                if (n.name() === 'person-group') {
+                    const s = n.findOne('.shape-body');
+                    if(s) s.stroke('black').strokeWidth(2);
+                }
+            }); 
+            selectedNodes=[]; 
+            textTransformer.nodes([]);
+            document.getElementById('text-toolbar').style.display = 'none';
+
+            if(selectedLine){
+                const conn = getAssociatedConn(selectedLine);
+                if(conn && conn.line) conn.line.stroke('black'); 
+                selectedLine=null;
+            } 
+        }
+
+        function selectLine(h) { clearSelection(); selectedLine=h; getAssociatedConn(h).line.stroke('#2196f3'); }
+        
+        function handleNodeClick(node, e) {
+            if(isConnectMode && node.name() === 'person-group') {
+                handleConnectionLogic(node);
+                return;
+            }
+            if(!isConnectMode) {
+                if(e.evt.shiftKey) { 
+                    if(isSelected(node)) {
+                        selectedNodes = selectedNodes.filter(n=>n!==node);
+                        if(node.name() === 'person-group') {
+                            node.findOne('.shape-body').stroke('black').strokeWidth(2);
+                        } else {
+                            // Update transformer
+                            const texts = selectedNodes.filter(n => n.name() === 'text-box-group');
+                            textTransformer.nodes(texts);
+                            if(texts.length !== 1) document.getElementById('text-toolbar').style.display = 'none';
+                        }
+                    } else {
+                        selectedNodes.push(node); highlightNodes(); 
+                    }
+                }
+                else {
+                    if(!isSelected(node)) selectSingle(node);
+                }
+            }
+        }
+
+        function handleConnectionLogic(obj) {
+            const isNode=obj.nodeType==='Group' && obj.name()==='person-group', isLine=obj.name()==='link-hit-area';
+            if(selectedNodes.length && isLine) {
+                const c = getAssociatedConn(obj);
+                if(c) {
+                    const v = selectedNodes.filter(n => n.name()==='person-group' && !connections.some(x=>x.type==='descent'&&x.parentConnId===c.id&&x.childId===n.id()));
+                    if(v.length) { saveHistory(); v.forEach(n => createDescent(c,n,Date.now()+Math.random(),false)); }
+                    clearSelection(); return;
+                }
+            }
+            let src = selectedNodes[0] || selectedLine;
+            if(!src) { isNode?selectSingle(obj):selectLine(obj); }
+            else {
+                const sNode=src.nodeType==='Group' && src.name()==='person-group', sLine=src.name&&src.name()==='link-hit-area';
+                if(sNode&&isNode&&src!==obj) { if(!connections.some(c=>c.type==='marriage'&&((c.p1Id===src.id()&&c.p2Id===obj.id())||(c.p1Id===obj.id()&&c.p2Id===src.id())))) createMarriage(src,obj); }
+                else if(sLine&&isNode) { const c=getAssociatedConn(src); if(!connections.some(x=>x.type==='descent'&&x.parentConnId===c.id&&x.childId===obj.id())) createDescent(c,obj); }
+                else if(sNode&&isLine) { const c=getAssociatedConn(obj); if(!connections.some(x=>x.type==='descent'&&x.parentConnId===c.id&&x.childId===src.id())) createDescent(c,src); }
+                clearSelection();
+            }
+        }
+
+        const menu=document.getElementById('context-menu'), nOpts=document.getElementById('menu-node-options'), lOpts=document.getElementById('menu-line-options');
+        function showContextMenu(e, type) { 
+            menu.style.display='flex'; menu.style.top=e.evt.clientY+'px'; menu.style.left=e.evt.clientX+'px'; 
+            nOpts.style.display=type==='node'?'flex':'none'; lOpts.style.display=type==='line'?'flex':'none'; 
+            
+            if (type === 'node' && selectedNodes.length === 1 && selectedNodes[0].name() === 'person-group') {
+                const node = selectedNodes[0];
+                updateContextMenuButtons(node);
+            }
+            if (type === 'line' && selectedLine) {
+                updateContextLineButtons(selectedLine);
+            }
+        }
+
+        function updateContextMenuButtons(node) {
+            const fill = node.getAttr('fillType') || 'white';
+            const isDeceased = node.getAttr('isDeceased') || false;
+            const isProband = node.getAttr('isProband') || false;
+
+            ['ctx-btn-white', 'ctx-btn-half', 'ctx-btn-black'].forEach(id => document.getElementById(id).classList.remove('active'));
+            if (fill === 'white') document.getElementById('ctx-btn-white').classList.add('active');
+            else if (fill === 'half') document.getElementById('ctx-btn-half').classList.add('active');
+            else if (fill === 'black') document.getElementById('ctx-btn-black').classList.add('active');
+
+            const btnDec = document.getElementById('ctx-btn-deceased');
+            isDeceased ? btnDec.classList.add('active') : btnDec.classList.remove('active');
+
+            const btnProb = document.getElementById('ctx-btn-proband');
+            isProband ? btnProb.classList.add('active') : btnProb.classList.remove('active');
+        }
+
+        function updateContextLineButtons(line) {
+            const conn = getAssociatedConn(line);
+            const btnSep = document.getElementById('ctx-btn-sep');
+            if (conn && conn.isSeparated) btnSep.classList.add('active');
+            else btnSep.classList.remove('active');
+        }
+
+        function hideContextMenu() { menu.style.display='none'; }
+        
+        function setShapeFill(t) { if(selectedNodes.length && selectedNodes[0].name() === 'person-group'){ saveHistory(); selectedNodes[0].setAttr('fillType',t); applyFillStyle(selectedNodes[0].findOne('.shape-body'),t); hideContextMenu(); } }
+        function toggleProband() { if(selectedNodes.length && selectedNodes[0].name() === 'person-group'){ saveHistory(); const n=selectedNodes[0],a=n.findOne('.proband-arrow'); a.visible(!a.visible()); n.setAttr('isProband',a.visible()); hideContextMenu(); } }
+        function toggleDeceased() { if(selectedNodes.length && selectedNodes[0].name() === 'person-group'){ saveHistory(); const n=selectedNodes[0],s=n.findOne('.deceased-slash'); s.visible(!s.visible()); n.setAttr('isDeceased',s.visible()); hideContextMenu(); } }
+        function toggleSeparated() { if(selectedLine){ const c=getAssociatedConn(selectedLine); if(c.type==='marriage'){ saveHistory(); c.isSeparated=!c.isSeparated; c.slash.visible(c.isSeparated); hideContextMenu(); } } }
+
+        function applyFillStyle(s, t) {
+            if(t==='white') { s.fill('white'); s.fillPriority('color'); }
+            else if(t==='black') { s.fill(DARK_GREY); s.fillPriority('color'); }
+            else { 
+                let sx=-20, ex=20; if(s.getClassName()==='Rect') { sx=0; ex=40; }
+                if(s.getClassName()==='RegularPolygon') { sx=-20; ex=20; }
+                s.fillLinearGradientStartPoint({x:sx,y:0}); s.fillLinearGradientEndPoint({x:ex,y:0});
+                s.fillLinearGradientColorStops([0,DARK_GREY,0.5,DARK_GREY,0.5,'white',1,'white']); s.fillPriority('linear-gradient');
+            }
+        }
+
+        function downloadImage() {
+            gridLayer.hide(); dragLayer.hide(); textTransformer.hide();
+            const link=document.createElement('a'); link.download='pedigree.png';
+            link.href=stage.toDataURL({ pixelRatio:2 });
+            document.body.appendChild(link); link.click(); document.body.removeChild(link);
+            gridLayer.show(); dragLayer.show(); if(selectedNodes.some(n=>n.name()==='text-box-group')) textTransformer.show();
+        }
+
+        stage.on('mousedown touchstart', (e) => {
+            if(e.target===stage && e.evt.touches && e.evt.touches.length > 1) return; // Ignore if 2 fingers (Pan)
+
+            if(e.target===stage) {
+                e.evt.preventDefault(); isSelecting=true;
+                const ptr=stage.getRelativePointerPosition(); 
+                selectionStart={x:ptr.x,y:ptr.y};
+                selectionRect.visible(true); selectionRect.width(0); selectionRect.height(0); selectionRect.position(selectionStart);
+                clearSelection();
+            }
+        });
+        stage.on('mousemove touchmove', (e) => {
+            if(!isSelecting) return;
+            const ptr=stage.getRelativePointerPosition();
+            const x=Math.min(selectionStart.x,ptr.x), y=Math.min(selectionStart.y,ptr.y), w=Math.abs(ptr.x-selectionStart.x), h=Math.abs(ptr.y-selectionStart.y);
+            selectionRect.position({x,y}); selectionRect.width(w); selectionRect.height(h);
+        });
+        stage.on('mouseup touchend', (e) => {
+            if(isSelecting) {
+                isSelecting=false; selectionRect.visible(false);
+                const box=selectionRect.getClientRect();
+                const captured=layer.find('Group').filter(n=>(n.name()==='person-group' || n.name()==='text-box-group') && Konva.Util.haveIntersection(box,n.getClientRect()));
+                if(captured.length) selectMultiple(captured);
+            }
+        });
+
+        window.addEventListener('resize', () => { const d=getStageDims(); stage.width(d.width); stage.height(d.height); drawGrid(); });
+    </script>
+</body>
+</html>
