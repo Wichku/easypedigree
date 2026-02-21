@@ -142,13 +142,6 @@
             Gen
         </button>
         <div class="sep"></div>
-        <button class="icon-btn" title="Save Image" onclick="downloadImage()">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                <polyline points="7 3 7 8 15 8"></polyline>
-            </svg>
-        </button>
         <button class="icon-btn" title="Undo" onclick="undo()">
             <svg width="20" height="20" viewBox="0 0 24 24" style="vertical-align: middle;">
                 <path d="M9 14L4 9l5-5" stroke="#5f6368" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
@@ -168,7 +161,14 @@
             </svg>
         </button>
         <div class="sep"></div>
-        <button class="danger text-btn" onclick="clearCanvasAction()">❌ Clear</button>
+        <button class="icon-btn" title="Save Image" onclick="downloadImage()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5f6368" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+        </button>
+        <button id="btn-clear" class="danger text-btn" onclick="handleClearClick()">❌ Clear</button>
         
         <!-- Tutorial Button -->
         <button class="text-btn" onclick="openTutorial()" style="margin-left: auto; background: #f0f0f0; border-color: #ccc; color: #333;">❓ Tutorial</button>
@@ -1166,6 +1166,29 @@
                 clearSelection();
                 drawPaintedGrids();
                 layer.draw();
+            }
+        }
+
+        let clearTimer = null;
+        function handleClearClick() {
+            const btn = document.getElementById('btn-clear');
+            if (!clearTimer) {
+                btn.innerText = '⚠️ Confirm';
+                btn.style.backgroundColor = '#d32f2f';
+                btn.style.color = 'white';
+                clearTimer = setTimeout(() => {
+                    btn.innerText = '❌ Clear';
+                    btn.style.backgroundColor = '';
+                    btn.style.color = '';
+                    clearTimer = null;
+                }, 3000);
+            } else {
+                clearCanvasAction();
+                btn.innerText = '❌ Clear';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+                clearTimeout(clearTimer);
+                clearTimer = null;
             }
         }
 
