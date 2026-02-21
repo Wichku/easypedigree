@@ -379,14 +379,17 @@
                     shp.fillLinearGradientColorStops([0,DARK_GREY,0.5,DARK_GREY,0.5,'white',1,'white']); shp.fillPriority('linear-gradient');
                 } else if(fill==='black'){ shp.fill(DARK_GREY); } else { shp.fill('white'); }
                 const sl = new Konva.Line({points:[-24,24,24,-24],stroke:'black',strokeWidth:2,visible:!!slash});
-                const lbl = new Konva.Text({text:text||name,fontSize:12,y:25,width:100,offsetX:50,align:'center'});
+                const lbl = new Konva.Text({text:text||name,fontSize:12,y:22,width:100,offsetX:50,align:'center'});
                 grp.add(shp,sl,lbl);
                 tutLayer.add(grp);
                 return grp;
             };
             const drawTLine = (x1,y1,x2,y2, slashed) => {
                 const l = new Konva.Line({points:[x1,y1,x2,y2],stroke:'black',strokeWidth:2});
-                const sl = new Konva.Line({points:[(x1+x2)/2-6, (y1+y2)/2+12, (x1+x2)/2+6, (y1+y2)/2-12], stroke:'black', strokeWidth:2, visible:slashed});
+                const midX = (x1+x2)/2, midY = (y1+y2)/2;
+                const sl = new Konva.Group({x: midX, y: midY, visible: slashed});
+                sl.add(new Konva.Line({points:[-10, 12, 2, -12], stroke:'black', strokeWidth:2}));
+                sl.add(new Konva.Line({points:[-2, 12, 10, -12], stroke:'black', strokeWidth:2}));
                 tutLayer.add(l,sl);
                 l.moveToBottom();
             };
@@ -992,7 +995,7 @@
             
             const arrow = new Konva.Arrow({ points:[-35,35,-15,15], pointerLength:8, pointerWidth:8, fill:'black', stroke:'black', strokeWidth:2, name:'proband-arrow', visible:isProband });
             const slash = new Konva.Line({ points:[-24,24,24,-24], stroke:'black', strokeWidth:2, name:'deceased-slash', visible:isDeceased });
-            const label = new Konva.Text({ text:name, fontSize:12, fontFamily:'Arial', fill:'#555', y:size/2+8, width:100, offsetX:50, align:'center', name:'label-text' });
+            const label = new Konva.Text({ text:name, fontSize:12, fontFamily:'Arial', fill:'#555', y:size/2+2, width:100, offsetX:50, align:'center', name:'label-text' });
 
             grp.add(shape, slash, arrow, label);
             applyFillStyle(shape, fill);
@@ -1018,7 +1021,9 @@
             if(save) saveHistory();
             const line = new Konva.Line({ stroke:'black', strokeWidth:2 });
             const hit = new Konva.Line({ stroke:'transparent', strokeWidth:20, name:'link-hit-area', listening:true });
-            const slash = new Konva.Line({ points:[0,0,0,0], stroke:'black', strokeWidth:2, visible:isSeparated });
+            const slash = new Konva.Group({ visible:isSeparated });
+            slash.add(new Konva.Line({ points:[-10, 12, 2, -12], stroke:'black', strokeWidth:2 }));
+            slash.add(new Konva.Line({ points:[-2, 12, 10, -12], stroke:'black', strokeWidth:2 }));
             
             setupLineEvents(hit, line);
             layer.add(line, slash, hit); line.moveToBottom(); slash.moveToBottom(); hit.moveToBottom();
@@ -1058,7 +1063,7 @@
                 if(!p1||!p2) return;
                 c.line.points([p1.x(),p1.y(),p2.x(),p2.y()]); c.hitLine.points([p1.x(),p1.y(),p2.x(),p2.y()]);
                 c.midX=(p1.x()+p2.x())/2; c.midY=(p1.y()+p2.y())/2;
-                if(c.slash) { c.slash.points([c.midX-6,c.midY+12,c.midX+6,c.midY-12]); c.slash.visible(c.isSeparated); }
+                if(c.slash) { c.slash.position({x: c.midX, y: c.midY}); c.slash.visible(c.isSeparated); }
             });
             connections.filter(c => c.type==='descent').forEach(c => {
                 const p=connections.find(x=>x.id===c.parentConnId), ch=layer.findOne('#'+c.childId);
